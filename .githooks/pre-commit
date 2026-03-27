@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+# Scan staged content for common secrets before commit.
+STAGED_CONTENT="$(git diff --cached -- . ':(exclude)package-lock.json')"
+
+if [ -z "$STAGED_CONTENT" ]; then
+  exit 0
+fi
+
+PATTERNS='(SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|GOOGLE_APPLICATION_CREDENTIALS|BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36,}|xox[baprs]-[A-Za-z0-9-]+|sk-[A-Za-z0-9]{20,})'
+
+if printf "%s" "$STAGED_CONTENT" | grep -E "$PATTERNS" >/dev/null 2>&1; then
+  echo "ERROR: Possible secret detected in staged changes."
+  echo "Remove the secret before committing."
+  exit 1
+fi
+
+exit 0
