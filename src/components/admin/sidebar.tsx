@@ -15,7 +15,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-6 h-fit w-full rounded-xl bg-[#1E2A3B] p-5 text-slate-100 md:w-72">
+    <aside className="sticky top-6 h-fit w-full rounded-xl bg-slate-800 p-6 text-slate-100 md:w-72">
       <div className="mb-8 flex items-center gap-3">
         <Image
           src="/shpeBEAR.png"
@@ -39,7 +39,7 @@ export function AdminSidebar() {
               href={item.href}
               className={`block rounded-lg border px-4 py-3 text-sm font-semibold transition ${
                 isActive
-                  ? "border-[#2B6CB0] bg-[#2B6CB0] text-white"
+                  ? "border-blue-600 bg-blue-700 text-white"
                   : "border-slate-500/30 bg-slate-700/20 text-slate-100 hover:border-slate-300/40 hover:bg-slate-100/10"
               }`}
             >

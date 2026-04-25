@@ -116,8 +116,8 @@ export default function SettingsPage() {
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold text-[#1A202C]">Settings</h2>
-        <p className="text-[#4A5568]">Manage dashboard-wide settings.</p>
+        <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
+        <p className="text-slate-600">Manage dashboard-wide settings.</p>
       </div>
 
       {error ? <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p> : null}
@@ -126,12 +126,12 @@ export default function SettingsPage() {
       <div className="panel max-w-xl rounded-xl p-4">
         <h3 className="mb-2 text-lg font-semibold">Current Active Year</h3>
         {loading ? (
-          <p className="text-sm text-[#4A5568]">Loading settings...</p>
+          <p className="text-sm text-slate-600">Loading settings...</p>
         ) : (
           <div className="space-y-4">
-            <p className="text-3xl font-bold text-[#2B6CB0]">{activeYear}</p>
+            <p className="text-3xl font-bold text-blue-700">{activeYear}</p>
             <div className="space-y-2">
-              <label className="text-sm text-[#4A5568]">Set Active Year</label>
+              <label className="text-sm text-slate-600">Set Active Year</label>
               <div className="flex flex-wrap gap-2">
                 <select
                   className="field max-w-xs"

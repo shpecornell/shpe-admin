@@ -3,12 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --sidebar-bg: #1e2a3b;
-  --main-bg: #f0f4f8;
-  --text-primary: #1a202c;
-  --text-secondary: #4a5568;
-  --primary: #2b6cb0;
-  --danger: #e53e3e;
+  --sidebar-bg: #1e293b;
+  --main-bg: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --danger: #b91c1c;
+  --danger-hover: #991b1b;
 }
 
 * {
@@ -49,7 +51,7 @@ a {
 }
 
 .field:focus {
-  outline: 2px solid rgba(43, 108, 176, 0.6);
+  outline: 2px solid rgba(37, 99, 235, 0.55);
   outline-offset: 1px;
 }
 
@@ -61,6 +63,10 @@ a {
   cursor: pointer;
   font-weight: 700;
   padding: 0.5rem 0.9rem;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
 }
 
 .btn-primary:disabled {
@@ -90,4 +96,8 @@ a {
   cursor: pointer;
   font-weight: 700;
   padding: 0.5rem 0.9rem;
+}
+
+.btn-danger:hover {
+  background: var(--danger-hover);
 }

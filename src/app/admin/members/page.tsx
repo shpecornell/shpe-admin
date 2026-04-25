@@ -6,8 +6,19 @@ import type { Member } from "@/types/admin";
 
 type MembersResponse = { members: Member[] };
 type SortKey = "name" | "net_id" | "graduation_year" | "member_type" | "points";
+type ContactCopyField = "email" | "personal_email" | "phone_number";
 
 const memberTypes = ["student", "GRADUATING", "alumni"] as const;
+const contactCopyFieldLabels: Record<ContactCopyField, string> = {
+  email: "School email",
+  personal_email: "Personal email",
+  phone_number: "Phone number"
+};
+
+function toCsvCell(value: string) {
+  const escaped = value.replace(/"/g, "\"\"");
+  return `"${escaped}"`;
+}
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -22,6 +33,13 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedContactFields, setSelectedContactFields] = useState<ContactCopyField[]>([
+    "personal_email"
+  ]);
+  const [includeNameColumn, setIncludeNameColumn] = useState(false);
+  const [includeNetIdColumn, setIncludeNetIdColumn] = useState(false);
+  const [includeEmptyContactValues, setIncludeEmptyContactValues] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   async function loadMembers(query = "") {
     setLoading(true);
@@ -118,6 +136,56 @@ export default function MembersPage() {
     return sorted;
   }, [results, sortKey, sortDirection]);
 
+  const selectedContactFieldsSafe = useMemo(
+    () => (selectedContactFields.length > 0 ? selectedContactFields : (["personal_email"] as ContactCopyField[])),
+    [selectedContactFields]
+  );
+
+  const copyRows = useMemo(() => {
+    return sortedResults
+      .map((member) => {
+        const selectedValues = selectedContactFieldsSafe.map((field) => {
+          const rawValue = member[field];
+          return typeof rawValue === "string" ? rawValue.trim() : "";
+        });
+        const hasAnySelectedValue = selectedValues.some((value) => value.length > 0);
+        if (!includeEmptyContactValues && !hasAnySelectedValue) {
+          return null;
+        }
+
+        const fullName = `${member.first_name} ${member.last_name}`.trim();
+        return {
+          fullName,
+          netId: member.net_id,
+          values: selectedValues
+        };
+      })
+      .filter((row): row is { fullName: string; netId: string; values: string[] } => row !== null);
+  }, [sortedResults, selectedContactFieldsSafe, includeEmptyContactValues]);
+
+  const csvContent = useMemo(() => {
+    const identityHeader = [
+      ...(includeNameColumn ? ["name"] : []),
+      ...(includeNetIdColumn ? ["net_id"] : [])
+    ];
+    const csvHeader = [...identityHeader, ...selectedContactFieldsSafe];
+    const csvRows = copyRows.map((row) => [
+      ...(includeNameColumn ? [row.fullName] : []),
+      ...(includeNetIdColumn ? [row.netId] : []),
+      ...row.values
+    ]);
+    return [csvHeader, ...csvRows].map((row) => row.map((cell) => toCsvCell(cell)).join(",")).join("\n");
+  }, [copyRows, selectedContactFieldsSafe, includeNameColumn, includeNetIdColumn]);
+
+  const csvPreview = useMemo(() => {
+    const lines = csvContent.split("\n");
+    const maxPreviewLines = 13;
+    if (lines.length <= maxPreviewLines) {
+      return csvContent;
+    }
+    return `${lines.slice(0, maxPreviewLines).join("\n")}\n...`;
+  }, [csvContent]);
+
   function handleSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
@@ -157,26 +225,59 @@ export default function MembersPage() {
     }
   }
 
+  async function copyCsvToClipboard() {
+    const selectedLabel = selectedContactFieldsSafe.map((field) => contactCopyFieldLabels[field]).join(", ");
+    try {
+      await navigator.clipboard.writeText(csvContent);
+      setCopyStatus(`Copied ${copyRows.length} rows (${selectedLabel}) as CSV.`);
+    } catch {
+      const element = document.createElement("textarea");
+      element.value = csvContent;
+      element.style.position = "fixed";
+      element.style.opacity = "0";
+      document.body.appendChild(element);
+      element.focus();
+      element.select();
+      document.execCommand("copy");
+      document.body.removeChild(element);
+      setCopyStatus(`Copied ${copyRows.length} rows (${selectedLabel}) as CSV.`);
+    }
+  }
+
+  function toggleContactField(field: ContactCopyField) {
+    setSelectedContactFields((current) => {
+      const exists = current.includes(field);
+      if (exists) {
+        if (current.length === 1) {
+          return current;
+        }
+        return current.filter((value) => value !== field);
+      }
+      return [...current, field];
+    });
+    setCopyStatus(null);
+  }
+
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold text-[#1A202C]">Members</h2>
-        <p className="text-[#4A5568]">Search, review, and update member details.</p>
+        <h2 className="text-2xl font-bold text-slate-900">Members</h2>
+        <p className="text-slate-600">Search, review, and update member details.</p>
       </div>
 
       {error ? <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 
-      <div className="panel flex flex-wrap items-end gap-3 rounded-xl p-4">
+      <div className="panel grid grid-cols-1 gap-3 rounded-xl p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         <input
-          className="field max-w-md"
+          className="field sm:col-span-2 lg:col-span-2 xl:col-span-2"
           placeholder="Search by name, NetID, major, or email"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <label className="text-sm text-[#4A5568]">
+        <label className="text-sm text-slate-600">
           Member Status
           <select
-            className="field mt-1 min-w-44"
+            className="field mt-1"
             value={memberTypeFilter}
             onChange={(e) => setMemberTypeFilter(e.target.value as "all" | Member["member_type"])}
           >
@@ -186,10 +287,10 @@ export default function MembersPage() {
             <option value="alumni">alumni</option>
           </select>
         </label>
-        <label className="text-sm text-[#4A5568]">
+        <label className="text-sm text-slate-600">
           Graduation Year
           <select
-            className="field mt-1 min-w-36"
+            className="field mt-1"
             value={graduationYearFilter}
             onChange={(e) => setGraduationYearFilter(e.target.value)}
           >
@@ -201,10 +302,10 @@ export default function MembersPage() {
             ))}
           </select>
         </label>
-        <label className="text-sm text-[#4A5568]">
+        <label className="text-sm text-slate-600">
           Personal Email
           <select
-            className="field mt-1 min-w-44"
+            className="field mt-1"
             value={personalEmailFilter}
             onChange={(e) => setPersonalEmailFilter(e.target.value as "all" | "has" | "missing")}
           >
@@ -213,10 +314,10 @@ export default function MembersPage() {
             <option value="missing">Missing personal email</option>
           </select>
         </label>
-        <label className="text-sm text-[#4A5568]">
+        <label className="text-sm text-slate-600">
           Major
           <select
-            className="field mt-1 min-w-56"
+            className="field mt-1"
             value={majorFilter}
             onChange={(e) => setMajorFilter(e.target.value)}
           >
@@ -229,7 +330,7 @@ export default function MembersPage() {
           </select>
         </label>
         <button
-          className="btn-secondary"
+          className="btn-secondary w-full sm:w-auto"
           onClick={() => {
             setMemberTypeFilter("all");
             setGraduationYearFilter("all");
@@ -240,21 +341,117 @@ export default function MembersPage() {
         >
           Clear Filters
         </button>
-        <button className="btn-secondary" onClick={() => void loadMembers(search)}>
+        <button className="btn-secondary w-full sm:w-auto" onClick={() => void loadMembers(search)}>
           Refresh From Server
         </button>
       </div>
 
-      <p className="text-sm text-[#4A5568]">
-        Showing <span className="font-semibold text-[#1A202C]">{results.length}</span> of{" "}
-        <span className="font-semibold text-[#1A202C]">{members.length}</span> members
+      <p className="text-sm text-slate-600">
+        Showing <span className="font-semibold text-slate-900">{results.length}</span> of{" "}
+        <span className="font-semibold text-slate-900">{members.length}</span> members
       </p>
 
-      <div className="space-y-4">
-        <aside className="panel rounded-xl p-4">
+      <div className="panel overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-sky-50 p-4 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Copy Filtered Contacts</h3>
+            <p className="text-sm text-slate-600">
+              Export exactly what you filtered above, in CSV format, with a quick preview.
+            </p>
+          </div>
+          <p className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700">
+            {copyRows.length} rows ready
+          </p>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sm:col-span-2 lg:col-span-2">
+            <p className="mb-1 text-sm font-medium text-slate-700">Contact columns</p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["email", "School emails"],
+                  ["personal_email", "Personal emails"],
+                  ["phone_number", "Phone numbers"]
+                ] as const
+              ).map(([field, label]) => (
+                <label
+                  key={field}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                    selectedContactFieldsSafe.includes(field)
+                      ? "border-sky-300 bg-sky-100 text-sky-900"
+                      : "border-slate-300 bg-white text-slate-700"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedContactFieldsSafe.includes(field)}
+                    onChange={() => toggleContactField(field)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeNameColumn}
+              onChange={(e) => {
+                setIncludeNameColumn(e.target.checked);
+                setCopyStatus(null);
+              }}
+            />
+            Include names
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeNetIdColumn}
+              onChange={(e) => {
+                setIncludeNetIdColumn(e.target.checked);
+                setCopyStatus(null);
+              }}
+            />
+            Include NetIDs
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeEmptyContactValues}
+              onChange={(e) => {
+                setIncludeEmptyContactValues(e.target.checked);
+                setCopyStatus(null);
+              }}
+            />
+            Include members with blank values
+          </label>
+          <button
+            className="btn-primary sm:self-end"
+            onClick={() => void copyCsvToClipboard()}
+            disabled={copyRows.length === 0}
+          >
+            Copy CSV
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            CSV Preview (
+            {selectedContactFieldsSafe.map((field) => contactCopyFieldLabels[field]).join(", ")})
+          </p>
+          <pre className="max-h-60 overflow-auto whitespace-pre-wrap rounded-md bg-slate-900 p-3 text-[11px] text-slate-100 sm:text-xs">
+            {csvPreview}
+          </pre>
+          {copyStatus ? <p className="mt-2 text-sm font-medium text-slate-700">{copyStatus}</p> : null}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(300px,360px)_1fr]">
+        <aside className="panel rounded-xl p-4 xl:sticky xl:top-4 xl:h-fit">
           <h3 className="mb-3 text-lg font-semibold">Edit Member</h3>
           {!activeMember ? (
-            <p className="text-sm text-[#4A5568]">Select a member row to edit.</p>
+            <p className="text-sm text-slate-600">Select a member row to edit.</p>
           ) : (
             <div className="space-y-3 text-sm">
               <label>
@@ -382,25 +579,25 @@ export default function MembersPage() {
                 />
               </label>
 
-              <div className="rounded-lg border border-[#E2E8F0] bg-slate-50 p-3">
-                <p className="text-sm font-semibold text-[#1A202C]">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-semibold text-slate-900">
                   Active Year Points: {activeMember.points_total ?? 0}
                 </p>
-                <p className="mt-2 text-sm font-semibold text-[#1A202C]">Attendance History (Active School Year)</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">Attendance History (Active School Year)</p>
                 {activeMember.attendance_history && activeMember.attendance_history.length > 0 ? (
                   <ul className="mt-2 space-y-2">
                     {activeMember.attendance_history.map((entry) => (
-                      <li key={`${entry.event_id}-${entry.checked_in_at ?? entry.event_name}`} className="rounded border border-[#E2E8F0] bg-white p-2">
-                        <p className="font-medium text-[#1A202C]">{entry.event_name}</p>
-                        <p className="text-xs text-[#4A5568]">
+                      <li key={`${entry.event_id}-${entry.checked_in_at ?? entry.event_name}`} className="rounded border border-slate-200 bg-white p-2">
+                        <p className="font-medium text-slate-900">{entry.event_name}</p>
+                        <p className="text-xs text-slate-600">
                           {entry.event_date ? new Date(entry.event_date).toLocaleString() : "No event date"}
                         </p>
-                        <p className="text-xs text-[#2B6CB0]">Points: {entry.points_awarded}</p>
+                        <p className="text-xs text-blue-700">Points: {entry.points_awarded}</p>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-2 text-sm text-[#4A5568]">No attendance records for the active school year.</p>
+                  <p className="mt-2 text-sm text-slate-600">No attendance records for the active school year.</p>
                 )}
               </div>
 
@@ -413,11 +610,11 @@ export default function MembersPage() {
 
         <div className="panel overflow-x-auto rounded-xl p-2">
           {loading ? (
-            <p className="p-4 text-sm text-[#4A5568]">Loading members...</p>
+            <p className="p-4 text-sm text-slate-600">Loading members...</p>
           ) : (
-            <table className="min-w-full text-sm">
+            <table className="min-w-[820px] text-xs sm:text-sm">
               <thead>
-                <tr className="text-left text-[#4A5568]">
+                <tr className="text-left text-slate-600">
                   <th className="px-3 py-2">
                     <button className="font-semibold" onClick={() => handleSort("name")}>
                       Name {sortIndicator("name")}
@@ -451,14 +648,14 @@ export default function MembersPage() {
                 {sortedResults.map((member) => (
                   <tr
                     key={member.id}
-                    className={`cursor-pointer border-t border-[#EDF2F7] ${
-                      activeMember?.id === member.id ? "bg-[#EBF8FF]" : "bg-white hover:bg-[#EDF2F7]"
+                    className={`cursor-pointer border-t border-slate-100 ${
+                      activeMember?.id === member.id ? "bg-blue-50" : "bg-white hover:bg-slate-50"
                     }`}
                     onClick={() => setActiveMember(member)}
                   >
                     <td className="px-3 py-2 font-medium">{member.first_name} {member.last_name}</td>
                     <td className="px-3 py-2">{member.net_id}</td>
-                    <td className="px-3 py-2 font-semibold text-[#2B6CB0]">{member.points_total ?? 0}</td>
+                    <td className="px-3 py-2 font-semibold text-blue-700">{member.points_total ?? 0}</td>
                     <td className="px-3 py-2">{member.email}</td>
                     <td className="px-3 py-2">{member.major || "-"}</td>
                     <td className="px-3 py-2">

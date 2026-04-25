@@ -31,6 +31,7 @@ export interface Member {
   graduation_semester: string | null;
   email: string;
   personal_email: string | null;
+  phone_number: string | null;
   member_type: MemberType;
   major: string | null;
   points_total?: number;

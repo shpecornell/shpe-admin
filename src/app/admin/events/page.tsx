@@ -184,7 +184,7 @@ export default function EventsPage() {
       margin: 1,
       width: 300,
       color: {
-        dark: "#1A202C",
+        dark: "#0F172A",
         light: "#FFFFFF"
       }
     });
@@ -195,8 +195,8 @@ export default function EventsPage() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#1A202C]">Events</h2>
-        <p className="text-[#4A5568]">Active school year: {activeYear || "Loading..."}</p>
+        <h2 className="text-2xl font-bold text-slate-900">Events</h2>
+        <p className="text-slate-600">Active school year: {activeYear || "Loading..."}</p>
       </div>
 
       {error ? <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p> : null}
@@ -315,11 +315,11 @@ export default function EventsPage() {
 
       <div className="panel overflow-x-auto rounded-xl p-3">
         {loading ? (
-          <p className="p-4 text-sm text-[#4A5568]">Loading events...</p>
+          <p className="p-4 text-sm text-slate-600">Loading events...</p>
         ) : (
           <table className="min-w-full border-separate text-sm [border-spacing:0_0.6rem]">
             <thead>
-              <tr className="text-left text-[#4A5568]">
+              <tr className="text-left text-slate-600">
                 <th className="px-3 py-2">Delete</th>
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Date</th>
@@ -334,7 +334,7 @@ export default function EventsPage() {
                 <tr key={item.id} className="group">
                   <td className="rounded-lg border border-red-200 bg-red-50 px-3 py-3.5">
                     <button
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-[#E53E3E] text-white hover:opacity-90"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-red-700 text-white hover:bg-red-800"
                       onClick={() => {
                         setDeleteEvent(item);
                         setDeleteInput("");
@@ -350,26 +350,26 @@ export default function EventsPage() {
                       </svg>
                     </button>
                   </td>
-                  <td className="rounded-l-lg border-y border-l border-[#E2E8F0] bg-white px-4 py-3.5 font-medium group-hover:bg-[#EDF2F7]">
+                  <td className="rounded-l-lg border-y border-l border-slate-200 bg-white px-4 py-3.5 font-medium group-hover:bg-slate-50">
                     {item.name}
                   </td>
-                  <td className="border-y border-[#E2E8F0] bg-white px-4 py-3.5 group-hover:bg-[#EDF2F7]">
+                  <td className="border-y border-slate-200 bg-white px-4 py-3.5 group-hover:bg-slate-50">
                     {formatEventDate(item.date)}
                   </td>
-                  <td className="border-y border-[#E2E8F0] bg-white px-4 py-3.5 group-hover:bg-[#EDF2F7]">
+                  <td className="border-y border-slate-200 bg-white px-4 py-3.5 group-hover:bg-slate-50">
                     {formatEventType(item.event_type)}
                   </td>
-                  <td className="border-y border-[#E2E8F0] bg-white px-4 py-3.5 group-hover:bg-[#EDF2F7]">
+                  <td className="border-y border-slate-200 bg-white px-4 py-3.5 group-hover:bg-slate-50">
                     {item.points_value}
                   </td>
-                  <td className="border-y border-[#E2E8F0] bg-white px-4 py-3.5 group-hover:bg-[#EDF2F7]">
+                  <td className="border-y border-slate-200 bg-white px-4 py-3.5 group-hover:bg-slate-50">
                     <div className="flex flex-wrap gap-2">
                       <button className="btn-secondary" onClick={() => void showQr(item)}>
                         Show QR
                       </button>
                     </div>
                   </td>
-                  <td className="rounded-r-lg border-y border-r border-[#E2E8F0] bg-white px-4 py-3.5 text-right group-hover:bg-[#EDF2F7]">
+                  <td className="rounded-r-lg border-y border-r border-slate-200 bg-white px-4 py-3.5 text-right group-hover:bg-slate-50">
                     <button
                       className={`inline-flex flex-col items-end rounded-md border px-2.5 py-1.5 text-xs font-semibold ${
                         item.is_open
@@ -403,12 +403,12 @@ export default function EventsPage() {
       {qrEvent ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4" onClick={() => setQrEvent(null)}>
           <div className="panel w-full max-w-md rounded-xl p-5" onClick={(e) => e.stopPropagation()}>
-            <h4 className="text-lg font-bold text-[#1A202C]">{qrEvent.name}</h4>
-            <p className="mb-4 text-sm text-[#4A5568]">Check-in QR Code</p>
+            <h4 className="text-lg font-bold text-slate-900">{qrEvent.name}</h4>
+            <p className="mb-4 text-sm text-slate-600">Check-in QR Code</p>
             <div className="grid place-items-center rounded-lg bg-white p-4">
               <img src={qrDataUrl} alt="Event check-in QR code" className="h-72 w-72 max-w-full" />
             </div>
-            <p className="mt-3 text-xs text-[#4A5568]">https://shpe.cornell.edu/checkin/{qrEvent.id}</p>
+            <p className="mt-3 text-xs text-slate-600">https://shpe.cornell.edu/checkin/{qrEvent.id}</p>
             <div className="mt-4 flex gap-2">
               <a
                 className="btn-secondary"
@@ -428,11 +428,11 @@ export default function EventsPage() {
       {deleteEvent ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4" onClick={() => setDeleteEvent(null)}>
           <div className="panel w-full max-w-lg rounded-xl p-5" onClick={(e) => e.stopPropagation()}>
-            <h4 className="text-lg font-bold text-[#1A202C]">Delete Event</h4>
-            <p className="mt-1 text-sm text-[#4A5568]">
+            <h4 className="text-lg font-bold text-slate-900">Delete Event</h4>
+            <p className="mt-1 text-sm text-slate-600">
               This action cannot be undone. To confirm, type the event name exactly:
             </p>
-            <p className="mt-2 rounded bg-slate-100 px-3 py-2 font-semibold text-[#1A202C]">{deleteEvent.name}</p>
+            <p className="mt-2 rounded bg-slate-100 px-3 py-2 font-semibold text-slate-900">{deleteEvent.name}</p>
             <input
               className="field mt-3"
               placeholder="Type event name to confirm"
