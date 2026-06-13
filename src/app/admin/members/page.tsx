@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { requestJson } from "@/lib/client-api";
 import type { Member } from "@/types/admin";
 
@@ -20,6 +21,211 @@ function toCsvCell(value: string) {
   return `"${escaped}"`;
 }
 
+type EditMemberPanelProps = {
+  activeMember: Member | null;
+  saving: boolean;
+  onChange: (updater: (current: Member | null) => Member | null) => void;
+  onClose: () => void;
+  onSave: () => void;
+  compact?: boolean;
+};
+
+function EditMemberPanel({ activeMember, saving, onChange, onClose, onSave, compact = false }: EditMemberPanelProps) {
+  const titleClass = compact ? "text-base font-semibold text-white" : "text-lg font-semibold text-slate-900";
+  const bodyTextClass = compact ? "text-sm text-slate-300" : "text-sm text-slate-600";
+  const labelClass = compact ? "block text-sm font-medium text-slate-200" : "block text-sm text-slate-700";
+  const closeButtonClass = compact
+    ? "rounded-md px-2 py-1 text-sm font-bold text-slate-200 hover:bg-slate-600 hover:text-white"
+    : "rounded-md px-2 py-1 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900";
+  const historyClass = compact
+    ? "rounded-lg border border-slate-600 bg-slate-900/35 p-3"
+    : "rounded-lg border border-slate-200 bg-slate-50 p-3";
+  const historyTitleClass = compact ? "text-sm font-semibold text-white" : "text-sm font-semibold text-slate-900";
+  const historyMutedClass = compact ? "text-sm text-slate-300" : "text-sm text-slate-600";
+
+  return (
+    <aside
+      className={
+        compact
+          ? "rounded-xl border border-slate-600/70 bg-slate-700/35 p-4"
+          : "panel rounded-xl p-4"
+      }
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className={titleClass}>Edit Member</h3>
+        {activeMember ? (
+          <button
+            type="button"
+            className={closeButtonClass}
+            onClick={onClose}
+            aria-label="Close edit member panel"
+            title="Close"
+          >
+            X
+          </button>
+        ) : null}
+      </div>
+      {!activeMember ? (
+        <p className={bodyTextClass}>Select a member row to edit.</p>
+      ) : (
+        <div className="space-y-3 text-sm">
+          <label className={labelClass}>
+            First Name
+            <input
+              className="field mt-1"
+              value={activeMember.first_name}
+              onChange={(e) => onChange((cur) => (cur ? { ...cur, first_name: e.target.value } : cur))}
+            />
+          </label>
+
+          <label className={labelClass}>
+            Last Name
+            <input
+              className="field mt-1"
+              value={activeMember.last_name}
+              onChange={(e) => onChange((cur) => (cur ? { ...cur, last_name: e.target.value } : cur))}
+            />
+          </label>
+
+          <label className={labelClass}>
+            NetID (read-only)
+            <input className="field mt-1 opacity-70" readOnly value={activeMember.net_id} />
+          </label>
+
+          <label className={labelClass}>
+            Email (read-only)
+            <input className="field mt-1 opacity-70" readOnly value={activeMember.email} />
+          </label>
+
+          <label className={labelClass}>
+            Graduation Year
+            <input
+              className="field mt-1"
+              type="number"
+              value={activeMember.graduation_year ?? ""}
+              onChange={(e) =>
+                onChange((cur) =>
+                  cur
+                    ? {
+                        ...cur,
+                        graduation_year: e.target.value ? Number(e.target.value) : null
+                      }
+                    : cur
+                )
+              }
+            />
+          </label>
+
+          <label className={labelClass}>
+            Graduation Semester
+            <input
+              className="field mt-1"
+              value={activeMember.graduation_semester ?? ""}
+              onChange={(e) =>
+                onChange((cur) =>
+                  cur
+                    ? {
+                        ...cur,
+                        graduation_semester: e.target.value
+                      }
+                    : cur
+                )
+              }
+            />
+          </label>
+
+          <label className={labelClass}>
+            Member Type
+            <select
+              className="field mt-1"
+              value={activeMember.member_type}
+              onChange={(e) =>
+                onChange((cur) =>
+                  cur
+                    ? {
+                        ...cur,
+                        member_type: e.target.value as Member["member_type"]
+                      }
+                    : cur
+                )
+              }
+            >
+              {memberTypes.map((value) => (
+                <option key={value} value={value} className="bg-white">
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={labelClass}>
+            Major
+            <input
+              className="field mt-1"
+              value={activeMember.major ?? ""}
+              onChange={(e) =>
+                onChange((cur) =>
+                  cur
+                    ? {
+                        ...cur,
+                        major: e.target.value
+                      }
+                    : cur
+                )
+              }
+            />
+          </label>
+
+          <label className={labelClass}>
+            Personal Email
+            <input
+              className="field mt-1"
+              value={activeMember.personal_email ?? ""}
+              onChange={(e) =>
+                onChange((cur) =>
+                  cur
+                    ? {
+                        ...cur,
+                        personal_email: e.target.value
+                      }
+                    : cur
+                )
+              }
+            />
+          </label>
+
+          <div className={historyClass}>
+            <p className={historyTitleClass}>Active Year Points: {activeMember.points_total ?? 0}</p>
+            <p className={`mt-2 ${historyTitleClass}`}>Attendance History (Active School Year)</p>
+            {activeMember.attendance_history && activeMember.attendance_history.length > 0 ? (
+              <ul className="mt-2 space-y-2">
+                {activeMember.attendance_history.map((entry) => (
+                  <li
+                    key={`${entry.event_id}-${entry.checked_in_at ?? entry.event_name}`}
+                    className="rounded border border-slate-200 bg-white p-2"
+                  >
+                    <p className="font-medium text-slate-900">{entry.event_name}</p>
+                    <p className="text-xs text-slate-600">
+                      {entry.event_date ? new Date(entry.event_date).toLocaleString() : "No event date"}
+                    </p>
+                    <p className="text-xs text-blue-700">Points: {entry.points_awarded}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={`mt-2 ${historyMutedClass}`}>No attendance records for the active school year.</p>
+            )}
+          </div>
+
+          <button className="btn-primary w-full" onClick={onSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      )}
+    </aside>
+  );
+}
+
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [search, setSearch] = useState("");
@@ -33,13 +239,12 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedContactFields, setSelectedContactFields] = useState<ContactCopyField[]>([
-    "personal_email"
-  ]);
+  const [selectedContactFields, setSelectedContactFields] = useState<ContactCopyField[]>([]);
   const [includeNameColumn, setIncludeNameColumn] = useState(false);
   const [includeNetIdColumn, setIncludeNetIdColumn] = useState(false);
   const [includeEmptyContactValues, setIncludeEmptyContactValues] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
 
   async function loadMembers(query = "") {
     setLoading(true);
@@ -57,6 +262,10 @@ export default function MembersPage() {
 
   useEffect(() => {
     void loadMembers();
+  }, []);
+
+  useEffect(() => {
+    setSidebarSlot(document.getElementById("admin-sidebar-slot"));
   }, []);
 
   const graduationYears = useMemo(() => {
@@ -136,15 +345,10 @@ export default function MembersPage() {
     return sorted;
   }, [results, sortKey, sortDirection]);
 
-  const selectedContactFieldsSafe = useMemo(
-    () => (selectedContactFields.length > 0 ? selectedContactFields : (["personal_email"] as ContactCopyField[])),
-    [selectedContactFields]
-  );
-
   const copyRows = useMemo(() => {
     return sortedResults
       .map((member) => {
-        const selectedValues = selectedContactFieldsSafe.map((field) => {
+        const selectedValues = selectedContactFields.map((field) => {
           const rawValue = member[field];
           return typeof rawValue === "string" ? rawValue.trim() : "";
         });
@@ -161,21 +365,23 @@ export default function MembersPage() {
         };
       })
       .filter((row): row is { fullName: string; netId: string; values: string[] } => row !== null);
-  }, [sortedResults, selectedContactFieldsSafe, includeEmptyContactValues]);
+  }, [sortedResults, selectedContactFields, includeEmptyContactValues]);
+
+  const hasCsvColumns = selectedContactFields.length > 0 || includeNameColumn || includeNetIdColumn;
 
   const csvContent = useMemo(() => {
     const identityHeader = [
       ...(includeNameColumn ? ["name"] : []),
       ...(includeNetIdColumn ? ["net_id"] : [])
     ];
-    const csvHeader = [...identityHeader, ...selectedContactFieldsSafe];
+    const csvHeader = [...identityHeader, ...selectedContactFields];
     const csvRows = copyRows.map((row) => [
       ...(includeNameColumn ? [row.fullName] : []),
       ...(includeNetIdColumn ? [row.netId] : []),
       ...row.values
     ]);
     return [csvHeader, ...csvRows].map((row) => row.map((cell) => toCsvCell(cell)).join(",")).join("\n");
-  }, [copyRows, selectedContactFieldsSafe, includeNameColumn, includeNetIdColumn]);
+  }, [copyRows, selectedContactFields, includeNameColumn, includeNetIdColumn]);
 
   const csvPreview = useMemo(() => {
     const lines = csvContent.split("\n");
@@ -226,7 +432,9 @@ export default function MembersPage() {
   }
 
   async function copyCsvToClipboard() {
-    const selectedLabel = selectedContactFieldsSafe.map((field) => contactCopyFieldLabels[field]).join(", ");
+    const selectedLabel = selectedContactFields.length > 0
+      ? selectedContactFields.map((field) => contactCopyFieldLabels[field]).join(", ")
+      : "selected columns";
     try {
       await navigator.clipboard.writeText(csvContent);
       setCopyStatus(`Copied ${copyRows.length} rows (${selectedLabel}) as CSV.`);
@@ -248,9 +456,6 @@ export default function MembersPage() {
     setSelectedContactFields((current) => {
       const exists = current.includes(field);
       if (exists) {
-        if (current.length === 1) {
-          return current;
-        }
         return current.filter((value) => value !== field);
       }
       return [...current, field];
@@ -258,8 +463,35 @@ export default function MembersPage() {
     setCopyStatus(null);
   }
 
+  const editMemberPanel = (
+    <EditMemberPanel
+      activeMember={activeMember}
+      saving={saving}
+      onChange={setActiveMember}
+      onClose={() => setActiveMember(null)}
+      onSave={() => void saveMember()}
+    />
+  );
+
+  const sidebarEditMemberPanel = sidebarSlot
+    ? createPortal(
+        <div className="hidden xl:block">
+          <EditMemberPanel
+            activeMember={activeMember}
+            saving={saving}
+            onChange={setActiveMember}
+            onClose={() => setActiveMember(null)}
+            onSave={() => void saveMember()}
+            compact
+          />
+        </div>,
+        sidebarSlot
+      )
+    : null;
+
   return (
     <section className="space-y-5">
+      {sidebarEditMemberPanel}
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Members</h2>
         <p className="text-slate-600">Search, review, and update member details.</p>
@@ -378,14 +610,14 @@ export default function MembersPage() {
                 <label
                   key={field}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
-                    selectedContactFieldsSafe.includes(field)
+                    selectedContactFields.includes(field)
                       ? "border-sky-300 bg-sky-100 text-sky-900"
                       : "border-slate-300 bg-white text-slate-700"
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={selectedContactFieldsSafe.includes(field)}
+                    checked={selectedContactFields.includes(field)}
                     onChange={() => toggleContactField(field)}
                   />
                   {label}
@@ -429,7 +661,7 @@ export default function MembersPage() {
           <button
             className="btn-primary sm:self-end"
             onClick={() => void copyCsvToClipboard()}
-            disabled={copyRows.length === 0}
+            disabled={!hasCsvColumns || copyRows.length === 0}
           >
             Copy CSV
           </button>
@@ -438,7 +670,9 @@ export default function MembersPage() {
         <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
             CSV Preview (
-            {selectedContactFieldsSafe.map((field) => contactCopyFieldLabels[field]).join(", ")})
+            {selectedContactFields.length > 0
+              ? selectedContactFields.map((field) => contactCopyFieldLabels[field]).join(", ")
+              : "no contact columns selected"}
           </p>
           <pre className="max-h-60 overflow-auto whitespace-pre-wrap rounded-md bg-slate-900 p-3 text-[11px] text-slate-100 sm:text-xs">
             {csvPreview}
@@ -447,167 +681,8 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(300px,360px)_1fr]">
-        <aside className="panel rounded-xl p-4 xl:sticky xl:top-4 xl:h-fit">
-          <h3 className="mb-3 text-lg font-semibold">Edit Member</h3>
-          {!activeMember ? (
-            <p className="text-sm text-slate-600">Select a member row to edit.</p>
-          ) : (
-            <div className="space-y-3 text-sm">
-              <label>
-                First Name
-                <input
-                  className="field mt-1"
-                  value={activeMember.first_name}
-                  onChange={(e) => setActiveMember((cur) => (cur ? { ...cur, first_name: e.target.value } : cur))}
-                />
-              </label>
-
-              <label>
-                Last Name
-                <input
-                  className="field mt-1"
-                  value={activeMember.last_name}
-                  onChange={(e) => setActiveMember((cur) => (cur ? { ...cur, last_name: e.target.value } : cur))}
-                />
-              </label>
-
-              <label>
-                NetID (read-only)
-                <input className="field mt-1 opacity-70" readOnly value={activeMember.net_id} />
-              </label>
-
-              <label>
-                Email (read-only)
-                <input className="field mt-1 opacity-70" readOnly value={activeMember.email} />
-              </label>
-
-              <label>
-                Graduation Year
-                <input
-                  className="field mt-1"
-                  type="number"
-                  value={activeMember.graduation_year ?? ""}
-                  onChange={(e) =>
-                    setActiveMember((cur) =>
-                      cur
-                        ? {
-                            ...cur,
-                            graduation_year: e.target.value ? Number(e.target.value) : null
-                          }
-                        : cur
-                    )
-                  }
-                />
-              </label>
-
-              <label>
-                Graduation Semester
-                <input
-                  className="field mt-1"
-                  value={activeMember.graduation_semester ?? ""}
-                  onChange={(e) =>
-                    setActiveMember((cur) =>
-                      cur
-                        ? {
-                            ...cur,
-                            graduation_semester: e.target.value
-                          }
-                        : cur
-                    )
-                  }
-                />
-              </label>
-
-              <label>
-                Member Type
-                <select
-                  className="field mt-1"
-                  value={activeMember.member_type}
-                  onChange={(e) =>
-                    setActiveMember((cur) =>
-                      cur
-                        ? {
-                            ...cur,
-                            member_type: e.target.value as Member["member_type"]
-                          }
-                        : cur
-                    )
-                  }
-                >
-                  {memberTypes.map((value) => (
-                    <option key={value} value={value} className="bg-white">
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Major
-                <input
-                  className="field mt-1"
-                  value={activeMember.major ?? ""}
-                  onChange={(e) =>
-                    setActiveMember((cur) =>
-                      cur
-                        ? {
-                            ...cur,
-                            major: e.target.value
-                          }
-                        : cur
-                    )
-                  }
-                />
-              </label>
-
-              <label>
-                Personal Email
-                <input
-                  className="field mt-1"
-                  value={activeMember.personal_email ?? ""}
-                  onChange={(e) =>
-                    setActiveMember((cur) =>
-                      cur
-                        ? {
-                            ...cur,
-                            personal_email: e.target.value
-                          }
-                        : cur
-                    )
-                  }
-                />
-              </label>
-
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-sm font-semibold text-slate-900">
-                  Active Year Points: {activeMember.points_total ?? 0}
-                </p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">Attendance History (Active School Year)</p>
-                {activeMember.attendance_history && activeMember.attendance_history.length > 0 ? (
-                  <ul className="mt-2 space-y-2">
-                    {activeMember.attendance_history.map((entry) => (
-                      <li key={`${entry.event_id}-${entry.checked_in_at ?? entry.event_name}`} className="rounded border border-slate-200 bg-white p-2">
-                        <p className="font-medium text-slate-900">{entry.event_name}</p>
-                        <p className="text-xs text-slate-600">
-                          {entry.event_date ? new Date(entry.event_date).toLocaleString() : "No event date"}
-                        </p>
-                        <p className="text-xs text-blue-700">Points: {entry.points_awarded}</p>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-sm text-slate-600">No attendance records for the active school year.</p>
-                )}
-              </div>
-
-              <button className="btn-primary" onClick={() => void saveMember()} disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          )}
-        </aside>
-
+      <div className="space-y-4">
+        <div className="xl:hidden">{editMemberPanel}</div>
         <div className="panel overflow-x-auto rounded-xl p-2">
           {loading ? (
             <p className="p-4 text-sm text-slate-600">Loading members...</p>

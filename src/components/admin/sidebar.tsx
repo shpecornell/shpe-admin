@@ -48,6 +48,7 @@ export function AdminSidebar() {
           );
         })}
       </nav>
+      <div id="admin-sidebar-slot" className="mt-5 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1" />
     </aside>
   );
 }
