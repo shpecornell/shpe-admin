@@ -71,6 +71,11 @@ export const schoolYearSchema = z.object({
   active_year: z.string().regex(/^\d{4}-\d{4}$/)
 });
 
+export const memberStatusPeriodSchema = z.object({
+  member_status_year: z.number().int().min(1990).max(2100),
+  member_status_semester: z.enum(["Fall", "Spring"])
+});
+
 export function parseJson<T>(payload: unknown, schema: z.ZodType<T>) {
   const result = schema.safeParse(payload);
   if (!result.success) {
