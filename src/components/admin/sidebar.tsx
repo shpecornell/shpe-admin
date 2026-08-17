@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const links = [
   { href: "/admin/events", label: "Events" },
@@ -13,6 +14,14 @@ const links = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="sticky top-6 h-fit w-full rounded-xl bg-slate-800 p-6 text-slate-100 md:w-72">
@@ -49,6 +58,13 @@ export function AdminSidebar() {
         })}
       </nav>
       <div id="admin-sidebar-slot" className="mt-5 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1" />
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="mt-5 w-full rounded-lg border border-slate-500/30 bg-slate-700/20 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-300/40 hover:bg-slate-100/10"
+      >
+        Sign out
+      </button>
     </aside>
   );
 }
