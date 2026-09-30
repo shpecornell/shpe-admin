@@ -44,6 +44,17 @@ export interface Member {
   }>;
 }
 
+export interface AttendanceRecord {
+  id: number;
+  checked_in_at: string | null;
+  member_id: number | null;
+  member_name: string;
+  member_last_first: string;
+  net_id: string;
+  event_id: number | null;
+  event_name: string;
+}
+
 export interface OfficerRole {
   id: number;
   member_id: number;

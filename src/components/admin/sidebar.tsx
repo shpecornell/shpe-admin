@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 const links = [
   { href: "/admin/events", label: "Events" },
   { href: "/admin/members", label: "Members" },
+  { href: "/admin/attendance", label: "Attendance" },
   { href: "/admin/officers", label: "Officers" },
   { href: "/admin/settings", label: "Settings" }
 ];
