@@ -226,6 +226,9 @@ export default function OfficersPage() {
         ) {
           return "Advice Chair(s)";
         }
+        if (lowered.includes("freshman rep")) {
+          return "Freshman Representative(s)";
+        }
         return value || "Other";
       };
 
